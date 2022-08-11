@@ -31,7 +31,7 @@ entry['img'] = (1, img_pth, ib)
 entry['qr_data'] = true_link
 
 for x, t in enumerate(ent.dump):
-    for y, d in enumerate(t):
+    for y, d in enumerate(t['entrys']):
         if d['id'] == target:
-            ent.dump[x][y] = entry
+            ent.dump[x]['entrys'][y] = entry
 ent.savedump()
