@@ -13,6 +13,15 @@ def ent_to_str(ent):
     return ausgabe
 
 
+def remove_slice(lis, slic):
+    new_lis = []
+    for n, x in enumerate(lis):
+        if n != slic:
+            new_lis.append(x)
+
+    return new_lis
+
+
 class Eintraege:
     daylytea = 0
     notes = 1
@@ -30,19 +39,27 @@ class Eintraege:
                 file.close()
         else:
             # Basic dumb structure
-            # meaning of diffrent lists in dumblist
-            # 0 = "DaylyTea" entrys -- Random Sachen einfach
-            # 1 = "Notes" entrys
-            # 2 = "Upcoming" entrys -- Termine aufschreiben
-            # 3 = "Weather" entrys -- basically ein Platz, um die Wetter-API Einträge reinzumachen
-            # 4 = "Space" entrys -- Später kommen so Module mit support für Zeugs wie Nasas 'APOD'
-            # 5 = "Crypto" entrys -- Platz für Einträge die mit dem Crypto Modul zusammenarbeite, dass später noch kommt
-            # 6 = "Mails" entrys
+
+            # dumpfile consists of diffrent cards {}
+            # cards consist of "name" and "entrys"
+            # "name" is a string of the name of the card 'Kartei 1'
+            # "entrys" is a list with the entrys of the card []
+
             # Basic Entry Structure
             # {"title": "str", "txt": "text for entry", "api": True/False,
-            # "api_conf":["what to access"]["in the api data"], "api_lnk": "link.to.api.org",
-            # "img": [True/False, Image()]], "qr": "data for qr code (code will be made from it)"}
-            dump_dummy = [[], [], [], [], [], [], []]
+            # "api_conf":["what to access"]["in the api data"], "api_lnk": "api options",
+            # "img": [True/False, Image(), True/False], "qr": "data for qr code (code will be made from it)"}
+            dump_dummy = [{"name": "Kartei 1", "entrys": 
+                                                [{"title": "title", 
+                                                  "txt": "placeholder", 
+                                                  "api": 0, 
+                                                  "api_conf": ["empty"], 
+                                                  "api_lnk": "", 
+                                                  "img": [0, "path/to/image", 0], 
+                                                  "qr": 0, 
+                                                  "qr_data": "", 
+                                                  "id": "#inhsiwwfjcrlxmqwsvcn"}]}, 
+                            {"name": "Kartei 2", "entrys": []}]
             with open(self.dumpsterpath, 'w') as file:
                 json.dump(dump_dummy, file)
                 file.close()
@@ -65,7 +82,10 @@ class Eintraege:
         dmp_id = self.generate_id()
         ent = {"title": title, "txt": txt, "api": api, "api_conf": api_conf, "api_lnk": api_lnk, "img": img, "qr": qr,
                "qr_data": qrd, "id": dmp_id}
-        self.dump[typ].append(ent)
+        self.dump[typ]['entrys'].append(ent)
+
+    def new_card(self, name='neue_kartei'):
+        self.dump.append({'name': name, 'entrys': []})
 
     def savedump(self):
         with open(self.dumpsterpath, 'w') as file:
@@ -80,9 +100,118 @@ class Eintraege:
 
     def dmp_by_id(self, dmp_id):
         for i, t in enumerate(self.dump):
-            for n, d in enumerate(t):
+            for n, d in enumerate(t['entrys']):
                 if d['id'] == dmp_id:
-                    return self.dump[i][n]
+                    return self.dump[i]['entrys'][n]
+
+    def move_card_up(self, typ):
+        if typ != 0:
+            new_order = []
+            old_without_changed = remove_slice(self.dump, typ)
+            for n, x in enumerate(self.dump):
+                if n<(typ-1):
+                    new_order.append(self.dump[n])
+                if n == (typ-1):
+                    new_order.append(self.dump[typ])
+                if n>(typ-1):
+                    new_order.append(old_without_changed[(n-1)])
+            self.dump = new_order
+
+    def move_card_down(self, typ):
+        if typ != len(self.dump)-1:
+            self.dump = self.dump[::-1]
+            typ = len(self.dump)-typ-1
+            new_order = []
+            old_without_changed = remove_slice(self.dump, typ)
+            for n, x in enumerate(self.dump):
+                if n<(typ-1):
+                    new_order.append(self.dump[n])
+                if n == (typ-1):
+                    new_order.append(self.dump[typ])
+                if n>(typ-1):
+                    new_order.append(old_without_changed[(n-1)])
+            self.dump = new_order
+            self.dump = self.dump[::-1]
+
+    def move_ent_down(self, id):
+        tt = 0
+        ee = 0
+        s = 'entrys'
+        for n, ty in enumerate(self.dump):
+            for m, en in enumerate(ty['entrys']):
+                if en['id'] == id:
+                    tt = n
+                    ee = m
+                    break
+        print(str(tt) + '    ' + str(ee))
+        print(len(self.dump[tt][s]))
+
+        if ee != len(self.dump[tt][s])-1:
+            self.dump[tt][s] = self.dump[tt][s][::-1]
+            ee = len(self.dump[tt][s])-ee-1
+
+
+            new_order = []
+
+            for x in self.dump[tt][s]:
+                print(x['title'])
+
+            old_without_changed = remove_slice(self.dump[tt][s], ee)
+            print('')
+            for x in old_without_changed:
+                print(x['title'])
+
+            for n, x in enumerate(self.dump[tt][s]):
+                if n<(ee-1):
+                    new_order.append(self.dump[tt][s][n])
+                if n == (ee-1):
+                    new_order.append(self.dump[tt][s][ee])
+                if n>(ee-1):
+                    new_order.append(old_without_changed[(n-1)])
+
+            new_order = new_order[::-1]
+
+            self.dump[tt][s] = new_order
+            print('')
+            for x in new_order:
+                print(x['title'])
+
+
+    def move_ent_up(self, id):
+        tt = 0
+        ee = 0
+        s = 'entrys'
+        for n, ty in enumerate(self.dump):
+            for m, en in enumerate(ty['entrys']):
+                if en['id'] == id:
+                    tt = n
+                    ee = m
+                    break
+        print(str(tt) + '    ' + str(ee))
+
+        if ee != 0:
+            new_order = []
+
+            for x in self.dump[tt][s]:
+                print(x['title'])
+
+            old_without_changed = remove_slice(self.dump[tt][s], ee)
+            print('')
+            for x in old_without_changed:
+                print(x['title'])
+
+            for n, x in enumerate(self.dump[tt][s]):
+                if n<(ee-1):
+                    new_order.append(self.dump[tt][s][n])
+                if n == (ee-1):
+                    new_order.append(self.dump[tt][s][ee])
+                if n>(ee-1):
+                    new_order.append(old_without_changed[(n-1)])
+            self.dump[tt][s] = new_order
+            print('')
+            for x in new_order:
+                print(x['title'])
+
 
     def printdump(self):
         print(self.dump)

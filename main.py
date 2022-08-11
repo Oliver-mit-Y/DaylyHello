@@ -1,14 +1,15 @@
+import sys
 import subprocess
-from time import strftime
-from tkinter import font
-from turtle import bgcolor
+import multiprocessing
+from time import strftime, sleep
+from tkinter import font, messagebox
 from tkinter import *
 import PIL.Image as Im
 from PIL import ImageTk
 import qrcode
-from sys import platform
 import os
 from einträge import *
+
 # set up some parameters
 if not os.path.exists('./dmps'):
         os.mkdir('./dmps')
@@ -19,6 +20,8 @@ dpbackground = 'lightgrey'
 rootbackground = 'grey'
 clockbackground = 'grey'
 buttonbackground = 'darkgrey'
+pressed_btn_color = '#cccccc'
+pressed = 0
 # create the most important objects
 root = Tk()
 mainframe = Frame(root)
@@ -29,12 +32,16 @@ clockframe = Frame(option_frame)
 eintragsliste = Eintraege(dump_location=dumplocation)
 clocktime = Label(clockframe)
 weekd = Label(clockframe)
+karteien = []
 
-if platform == 'win32':
+if sys.platform == 'win32':
     pypy = 'python'
 else:
     pypy = 'python3'
 
+# Funktion die ich aus dem Internet geklaut habe, um rgb Farben in TKinter zu nutzen
+def rgbtohex(r,g,b):
+    return f'#{r:02x}{g:02x}{b:02x}'
 
 # Funktion um alle items as einem Frame oder Canvas oder so was zu reinigen
 def meister_proper(wid):
@@ -44,9 +51,9 @@ def meister_proper(wid):
 
 
 # Clear the dp frame before putting new stuff into it + set pressed button color
-def create_dp_for_dp(n, btn_list, db):
+def create_dp_for_dp(n, db):
     meister_proper(dp_frame)
-    pressed_kartei(n, btn_list)
+    pressed_kartei(n)
     dp = Frame(dp_frame, width=0,
                     height=0,
                     background=db
@@ -61,7 +68,7 @@ def open_editor():
 
 def module_load():
     for ts in eintragsliste.dump:
-        for m in ts:
+        for m in ts['entrys']:
             if m['api']:
                 module = m['api_conf'].split('/')
                 module = f'{module[-2]}/{module[-1]}'
@@ -71,18 +78,26 @@ def module_load():
 
 
 # alle "show_frame_x"-Funktionen sind fuer die einzelnen Karteien zum umschalten des Contents
-def show_frame_x(n, btn_list, typ):
+def show_frame_x(n, typ):
     eintragsliste.reloaddump()
-    dp = create_dp_for_dp(n, btn_list, rootbackground)
-    content = eintragsliste.dump[typ]
+    dp = create_dp_for_dp(n, rootbackground)
+    content = eintragsliste.dump[typ]['entrys']
 
     for en, tb in enumerate(content):
         ydist = 2
+        txt = ent_to_str(tb)
+        backslash_n = 0
+        for ch in txt:
+            if ch == "\n":
+                backslash_n += 1
+        tb_width = 72
+        tb_height = (len(txt)-backslash_n)/tb_width+backslash_n+1.5
+
         tf = Frame(dp, background=dpbackground)
         tf.grid(column=0, row=en, pady=(0, 1), sticky=NE)
         tf.rowconfigure(0, weight=1)
         tf.rowconfigure(1, weight=1)
-        txt = ent_to_str(tb)
+        
         iye, ipa, ibig = tb['img']
         textbox = Text(tf, background=dpbackground, relief="flat")
         normal_bold = font.Font(family='Calibri', weight='bold', size=12)
@@ -93,14 +108,14 @@ def show_frame_x(n, btn_list, typ):
         textbox.insert(1.0, txt)
         textbox.tag_add('headline', '1.0', '1.end')
         textbox.tag_add('normal', '2.0', END)
-        textbox.configure(state=DISABLED, height=int(textbox.index('end').split('.')[0]), width=72)
+        textbox.configure(state=DISABLED, height=tb_height, width=tb_width, wrap='word')
         textbox.grid(column=0, row=0, sticky=NW)
         if iye or tb['qr']:
             img_frm = Frame(tf, background=dpbackground)
             img_frm.grid_columnconfigure(0, weight=1)
             img_frm.grid_rowconfigure(0, weight=1)
             img_frm.grid_rowconfigure(1, weight=1)
-            img_frm.grid(column=1, row=0, sticky=E, ipady=ydist)
+            img_frm.grid(column=1, row=0, sticky=NE, ipady=ydist)
             if iye == 1:
                 if ibig == 0:
                     try:
@@ -148,7 +163,7 @@ def show_frame_x(n, btn_list, typ):
                 qr = ImageTk.PhotoImage(qr)
                 ql = Label(img_frm, image=qr)
                 ql.qr = qr
-                ql.grid(column=0, row=rowow, padx=0, sticky=E)
+                ql.grid(column=0, row=rowow, padx=0, sticky=NE)
             img_frm.update()
             hfrm = img_frm.winfo_height()
             img_frm.grid_propagate(False)
@@ -157,7 +172,7 @@ def show_frame_x(n, btn_list, typ):
         tf.update()
         tfh = tf.winfo_height()
         tf.grid_propagate(False)
-        tf.configure(width=684, height=tfh)
+        tf.configure(width=root.winfo_width()-15, height=tfh)
 
     dp.grid(column=0, row=0, padx=(5, 0), pady=(5, 5))
 
@@ -173,12 +188,15 @@ def updateall(it):
         i.update()
 
 
-def pressed_kartei(n, btn_list):
-    for btn in btn_list:
+def pressed_kartei(n):
+    global pressed
+    for btn in karteien:
         if btn['name'] == n:
-            btn['goto'].configure(background=dpbackground)
+            btn['goto'].configure(background=pressed_btn_color)
+            pressed = btn['typ']
         else:
             btn['goto'].configure(background=buttonbackground)
+        
         root.update()
 
 
@@ -200,6 +218,41 @@ def update_weekd():
     weekd.configure(text=day)
     root.update()
     weekd.after(1000, update_weekd)
+
+
+def reload():
+    module_load()
+    na = ""
+    for k in karteien:
+        if k['typ'] == pressed:
+            na = k['name']
+
+    show_frame_x(na, pressed)
+
+
+def kartei_length_check(kartlist=None):
+    msg_title = 'Neustart erforderlich'
+    if kartlist:
+        length = len(kartei_frame.winfo_children())
+        eintragsliste.reloaddump()
+        if len(eintragsliste.dump) != length:
+            messagebox.showinfo(message='Änderung an Karteilänge wurde Festgestellt\nProgramm wird neugestartet um Änderungen zu übernehmen', title=msg_title)
+            sys.stdout.flush()
+            os.execl(sys.executable, 'python', __file__, *sys.argv[1:])
+        for nn, c in enumerate(eintragsliste.dump):
+            if c['name'] != kartlist[nn]['name']:
+                messagebox.showinfo(message='Änderung an Karteinamen wurde Festgestellt\nProgramm wird neugestartet um Änderungen zu übernehmen', title=msg_title)
+                sys.stdout.flush()
+                os.execl(sys.executable, 'python', __file__, *sys.argv[1:])
+        clocktime.after(1000, lambda: kartei_length_check(kartlist=kartlist))
+    else:
+        length = len(kartei_frame.winfo_children())
+        eintragsliste.reloaddump()
+        if len(eintragsliste.dump) != length:
+            messagebox.showinfo(message='Änderung an Karteilänge wurde Festgestellt\nProgramm wird neugestartet um Änderungen zu übernehmen', title=msg_title)
+            sys.stdout.flush()
+            os.execl(sys.executable, 'python', __file__, *sys.argv[1:])
+        clocktime.after(1000, lambda: kartei_length_check())
 
 
 if __name__ == '__main__':
@@ -251,7 +304,7 @@ if __name__ == '__main__':
 
     clockframe.grid(column=1, row=0, ipady=0, pady=(1, 0), sticky=NSEW)
     weekd.grid(column=0, row=0, padx=20, sticky=W)
-    clocktime.grid(column=2, row=0, padx=(100, 0), ipady=0, sticky=NSEW)
+    clocktime.grid(column=1, row=0, padx=(100, 0), ipady=0, sticky=NSEW)
 
     add_btn.grid(column=0, row=0, ipady=15, pady=(1, 0), sticky=S)
     close_btn.grid(column=2, row=0, ipady=15, pady=(1, 0), sticky=S)
@@ -283,36 +336,13 @@ if __name__ == '__main__':
     dp_frame_height = (root.winfo_height() - (2 * option_frame.winfo_height()))
     dp_frame.configure(height=dp_frame_height, width=x)
     dp_frame.grid_propagate(False)
-    karteien = [
-        {'name': 'DaylyTea',
-         'goto': Button(kartei_frame,
-                        command=lambda: show_frame_x(karteien[0]['name'], karteien,
-                                                     eintragsliste.daylytea))},
-        {'name': 'Notes',
-         'goto': Button(kartei_frame,
-                        command=lambda: show_frame_x(karteien[1]['name'], karteien,
-                                                     eintragsliste.notes))},
-        {'name': 'Upcoming',
-         'goto': Button(kartei_frame,
-                        command=lambda: show_frame_x(karteien[2]['name'], karteien,
-                                                     eintragsliste.upcoming))},
-        {'name': 'Weather',
-         'goto': Button(kartei_frame,
-                        command=lambda: show_frame_x(karteien[3]['name'], karteien,
-                                                     eintragsliste.weather))},
-        {'name': 'Space',
-         'goto': Button(kartei_frame,
-                        command=lambda: show_frame_x(karteien[4]['name'], karteien,
-                                                     eintragsliste.space))},
-        {'name': 'Crypto',
-         'goto': Button(kartei_frame,
-                        command=lambda: show_frame_x(karteien[5]['name'], karteien,
-                                                     eintragsliste.crypto))},
-        {'name': 'Mails',
-         'goto': Button(kartei_frame,
-                        command=lambda: show_frame_x(karteien[6]['name'], karteien,
-                                                     eintragsliste.mails))}
-    ]
+    for n, cards in enumerate(eintragsliste.dump):
+        card = {'name': cards['name'], 
+                'goto': Button(kartei_frame,
+                               command=lambda c=cards['name'], nn=n: show_frame_x(c, nn)),
+                'typ': n}
+        karteien.append(card)
+
 
     # Configuriere Buttons für Karteien
     for c, k in enumerate(karteien):
@@ -323,7 +353,12 @@ if __name__ == '__main__':
     for c, k in enumerate(karteien):
         k['goto'].grid(ipadx=(root.winfo_width() - kartei_frame.winfo_width()) / len(karteien * 2))
 
+    # add reload button
+    reload_btn = Button(option_frame, text='r', width=1, height=1, command=lambda:reload(), background=buttonbackground)
+    reload_btn.grid(row=0, column=1, sticky=SE)
 
-    show_frame_x(karteien[0]['name'], karteien, eintragsliste.daylytea)
+    show_frame_x(karteien[0]['name'], 0)
     
+    kartei_length_check(karteien)
+
     root.mainloop()

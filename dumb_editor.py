@@ -1,4 +1,6 @@
+import sys
 import shutil
+from tkinter.tix import COLUMN
 from einträge import *
 from tkinter import *
 from tkinter import messagebox
@@ -18,6 +20,11 @@ back = str('Notes')
 backtyp = 0
 ed_ent = {'typ': Eintraege.daylytea, 'n': 0}
 karteien = []
+
+
+def restart_editor():
+    sys.stdout.flush()
+    os.execl(sys.executable, 'python', __file__, *sys.argv[1:])
 
 
 def meister_proper(wid):
@@ -54,17 +61,54 @@ def show_frame_x(m=None, btn_list=None, height=None, typ=None, dp=None):
         dp = create_dp_for_dp([m, typ], btn_list, 'lightgrey')
 
         if typ is not None:
-            for n, d in enumerate(eintragliste.dump[typ]):
-                part = [d['id'], Button(dp, text=d['title'])]
+            for n, d in enumerate(eintragliste.dump[typ]['entrys']):
+                
+                part_frm = Frame(dp, background='grey')
+                part = [d['id'], Button(part_frm, text=d['title'], height=3, width=50, background='lightgrey')]
+                up_dwn_frm = Frame(part_frm, background='grey')
+                up_btn = Button(up_dwn_frm, text='up', width=4, background='lightgrey', command=lambda p=part[0]: entry_up_btn_fnc(p))
+                up_btn.grid(row=0, column=0)
+                dwn_btn = Button(up_dwn_frm, text='dwn', width=4, background='lightgrey', command=lambda p=part[0]: entry_down_btn_fnc(p))
+                dwn_btn.grid(row=1, column=0)
                 part[1].configure(command=lambda p=part[0]:
                                   show_frame_x(dp=editor_frame(eintragliste.dmp_by_id(p))))
-                part[1].grid(row=n, column=0, sticky=W)
-            plus_btn = Button(dp, text="+", command=lambda: create_entry(typ, m, btn_list, height))
-            plus_btn.grid(row=0, column=1, padx=10)
-        if typ is None:
-            print("kys little piece of shit")
 
-    dp.grid(column=0, row=0, padx=(5, 0), pady=(5, 5))
+                part[1].grid(row=0, column=0, padx=2, pady=2)
+                up_dwn_frm.grid(row=0, column=1)
+                part_frm.grid(row=n, column=0, sticky=W)
+
+            part_select_option_frame = Frame(selection_frame, background='lightgrey')
+
+            plus_btn = Button(part_select_option_frame, height=1, background='lightgrey', font=('Calibri', 20), width=3, text="+", command=lambda: create_entry(typ, m, btn_list, height))
+            plus_btn.grid(row=0, column=0, padx=5, pady=5, sticky=NE)
+
+            plus_minus_card_frame = Frame(part_select_option_frame, background='grey')
+
+            card_up_btn = Button(plus_minus_card_frame, text='up', background='lightgrey', height=1, width=7, command=lambda:card_up_btn_fnc(typ))
+            card_dwn_btn = Button(plus_minus_card_frame, text='dwn', background='lightgrey', height=1, width=7, command=lambda:card_down_btn_fnc(typ))
+            minus_card_btn = Button(plus_minus_card_frame, text='-', background='lightgrey', height=1, width=7, command=lambda: minus_card_btn_fnc(typ=typ))
+            plus_card_btn = Button(plus_minus_card_frame, text='+', background='lightgrey', height=1, width=7, command=lambda: plus_card_btn_fnc())
+            edit_card_btn = Button(plus_minus_card_frame, text='edit', background='lightgrey', height=1, width=7, command=lambda: show_frame_x(dp=edit_card_btn_fnc(typ=typ)))
+            card_up_btn.grid(row=0, column=0, padx=8, pady=2)
+            card_dwn_btn.grid(row=1, column=0, padx=8, pady=2)
+            minus_card_btn.grid(row=2, column=0, padx=8, pady=2)
+            plus_card_btn.grid(row=3, column=0, padx=8, pady=2)
+            edit_card_btn.grid(row=4, column=0, padx=8, pady=2)
+            selection_frame.grid_rowconfigure(1, weight=1)
+            selection_frame.grid_columnconfigure(1, weight=1)
+            plus_minus_card_frame.grid(row=1, column=0, sticky=SE, ipady=2)
+            part_select_option_frame.grid(row=0, column=1, sticky=NE)
+            root.update()
+            temp_width = part_select_option_frame.winfo_width()
+            part_select_option_frame.grid_propagate(False)
+            part_select_option_frame.configure(width=temp_width, height=root.winfo_height())
+            part_select_option_frame.grid_rowconfigure(0, weight=1)
+            part_select_option_frame.grid_rowconfigure(1, weight=1)
+            
+        if typ is None:
+            print("type is none :(")
+
+    dp.grid(column=0, row=0, padx=(5, 0), pady=(5, 5), sticky=NW)
 
 
 def file_btn_fnc(ent_wdg):
@@ -77,6 +121,41 @@ def bck_btn_fnc():
     show_frame_x(back, karteien,
                  selection_frame.winfo_height(), typ=backtyp)
 
+
+def minus_card_btn_fnc(typ):
+    card_name = karteien[typ]['name']
+    if messagebox.askyesno(title='sicher?', message=f'Bist du dir sicher, dass du die Kartei {card_name} löschen möchtest?'):
+        if messagebox.askyesno(title='WIRKLICH SICHER?', message='Es gibt kein zurück nachdem du das tust. Alle Einträge aus dieser Kartei gehen verloren\nWirklich sicher?'):
+            eintragliste.dump.pop(typ)
+            eintragliste.savedump()
+            restart_editor()
+
+def plus_card_btn_fnc():
+    eintragliste.new_card(f'Kartei {len(karteien) + 1}')
+    kartei_load()
+    eintragliste.savedump()
+
+    restart_editor()
+
+def edit_card_btn_fnc(typ):
+    dp = Frame(selection_frame, width=selection_frame.winfo_width()-10, height=root.winfo_height(),
+                    background='grey')
+    dp.grid_propagate(False)
+    name_lbl = Label(dp, text='new name of card', background='lightgrey', relief='flat')
+    name_txt = Entry(dp)
+    name_txt.insert(0, eintragliste.dump[typ]['name'])
+    name_lbl.grid(row=0, column=0, pady=5, padx=5, sticky=W)
+    name_txt.grid(row=1, column=0, pady=5, padx=5)
+
+    sv_btn = Button(dp, background='darkgrey', text='save', font=('calibri', 12),
+                    command=lambda:save_card_fnc(typ, name_txt))
+    bck_btn = Button(dp, background='darkgrey', text='back', font=('calibri', 12),
+                    command=lambda:bck_btn_fnc())
+
+    sv_btn.grid(row=2, column=0)
+    bck_btn.grid(row=2, column=1)
+    
+    return dp
 
 # frame to edit one specific Entry
 def editor_frame(d):
@@ -283,9 +362,9 @@ def apply_btn_fnc(optlist):
     tmp = {"title": title, "txt": text, "api": api_state, "api_conf": api_conf, "api_lnk": api_lnk,
            "img": (img_state, img_pth, img_big), "qr": qr_state, "qr_data": qr_data, "id": optlist[4]}
     for i, t in enumerate(eintragliste.dump):
-        for n, d in enumerate(t):
+        for n, d in enumerate(t['entrys']):
             if d['id'] == optlist[4]:
-                eintragliste.dump[i][n] = tmp
+                eintragliste.dump[i]['entrys'][n] = tmp
                 eintragliste.savedump()
                 eintragliste.reloaddump()
                 break
@@ -300,12 +379,53 @@ def del_btn_fnc(d):
     if not messagebox.askyesno(f'Are you sure you want to delete entry \'{d["title"]}\'?'):
         return
     for m, tt in enumerate(eintragliste.dump):
-        for n, e in enumerate(tt):
+        for n, e in enumerate(tt['entrys']):
             if e['id'] == d['id']:
-                eintragliste.dump[m].pop(n)
+                eintragliste.dump[m]['entrys'].pop(n)
                 eintragliste.savedump()
                 eintragliste.reloaddump()
     bck_btn_fnc()
+
+
+def card_up_btn_fnc(typ):
+    eintragliste.move_card_up(typ)
+    eintragliste.savedump()
+    restart_editor()
+
+
+def card_down_btn_fnc(typ):
+    eintragliste.move_card_down(typ)
+    eintragliste.savedump()
+    restart_editor()
+
+
+def entry_up_btn_fnc(id):
+    eintragliste.move_ent_up(id)
+    bck_btn_fnc()
+    eintragliste.savedump()
+
+
+def entry_down_btn_fnc(id):
+    eintragliste.move_ent_down(id)
+    bck_btn_fnc()
+    eintragliste.savedump()
+
+
+def save_card_fnc(typ, name):
+    titel = str_cleanup(name.get())
+    eintragliste.dump[typ]['name'] = titel
+    eintragliste.savedump()
+    restart_editor()
+
+
+def kartei_load():
+    karteien = []
+    for n, cards in enumerate(eintragliste.dump):
+        card = {'name': cards['name'], 
+                'goto': Button(type_selector_frame,
+                               command=lambda c=cards['name'], nn=n: show_frame_x(c, karteien, selection_frame.winfo_height(), nn))}
+        karteien.append(card)
+    return karteien
 
 
 if __name__ == '__main__':
@@ -330,43 +450,7 @@ if __name__ == '__main__':
     type_selector_frame.grid_propagate(True)
     root.update()
 
-    karteien = [
-        {'name': 'DaylyTea',
-         'typ': eintragliste.daylytea,
-         'goto': Button(type_selector_frame,
-                        command=lambda: show_frame_x(karteien[0]['name'], karteien,
-                                                     selection_frame.winfo_height(), karteien[0]['typ']))},
-        {'name': 'Notes',
-         'typ': eintragliste.notes,
-         'goto': Button(type_selector_frame,
-                        command=lambda: show_frame_x(karteien[1]['name'], karteien,
-                                                     selection_frame.winfo_height(), karteien[1]['typ']))},
-        {'name': 'Upcoming',
-         'typ': eintragliste.upcoming,
-         'goto': Button(type_selector_frame,
-                        command=lambda: show_frame_x(karteien[2]['name'], karteien,
-                                                     selection_frame.winfo_height(), karteien[2]['typ']))},
-        {'name': 'Weather',
-         'typ': eintragliste.weather,
-         'goto': Button(type_selector_frame,
-                        command=lambda: show_frame_x(karteien[3]['name'], karteien,
-                                                     selection_frame.winfo_height(), karteien[3]['typ']))},
-        {'name': 'Space',
-         'typ': eintragliste.space,
-         'goto': Button(type_selector_frame,
-                        command=lambda: show_frame_x(karteien[4]['name'], karteien,
-                                                     selection_frame.winfo_height(), karteien[4]['typ']))},
-        {'name': 'Crypto',
-         'typ': eintragliste.crypto,
-         'goto': Button(type_selector_frame,
-                        command=lambda: show_frame_x(karteien[5]['name'], karteien,
-                                                     selection_frame.winfo_height(), karteien[5]['typ']))},
-        {'name': 'Mails',
-         'typ': eintragliste.mails,
-         'goto': Button(type_selector_frame,
-                        command=lambda: show_frame_x(karteien[6]['name'], karteien,
-                                                     selection_frame.winfo_height(), karteien[6]['typ']))}
-    ]
+    karteien = kartei_load()
 
     for c, k in enumerate(karteien):
         k['goto'].configure(text=k['name'], background='grey', borderwidth=1, relief='flat')
