@@ -54,9 +54,9 @@ entry['img'] = (1, img_pth, ib)
 backup = ent.dump
 try: 
     for x, t in enumerate(ent.dump):
-        for y, d in enumerate(t):
+        for y, d in enumerate(t['entrys']):
             if d['id'] == target:
-                ent.dump[x][y] = entry
+                ent.dump[x]['entrys'][y] = entry
 except Exception:
     ent.dump = backup
     print('ein Fehler ist passiert')
