@@ -49,6 +49,8 @@ class Eintraege:
             # {"title": "str", "txt": "text for entry", "api": 0/1,
             # "api_conf":["what to access"]["in the api data"], "api_lnk": "api options",
             # "img": [0/1, Image(), 0/1], "qr": 0/1 ,"qr_data": "data for qr code (code will be made from it)"}
+            card_id = self.generate_id()
+            card_id2 = self.generate_id()
             dump_dummy = [{"name": "Kartei 1", "entrys": 
                                                 [{"title": "title", 
                                                   "txt": "placeholder", 
@@ -58,8 +60,9 @@ class Eintraege:
                                                   "img": [0, "path/to/image", 0], 
                                                   "qr": 0, 
                                                   "qr_data": "", 
-                                                  "id": "#inhsiwwfjcrlxmqwsvcn"}]}, 
-                            {"name": "Kartei 2", "entrys": []}]
+                                                  "id": "#inhsiwwfjcrlxmqwsvcn"}],
+                            'icon': [0, 'noicon'], 'id': card_id}, 
+                            {"name": "Kartei 2", "entrys": [], 'icon': [0, 'noicon'], 'id': card_id2}]
             with open(self.dumpsterpath, 'w') as file:
                 json.dump(dump_dummy, file)
                 file.close()
