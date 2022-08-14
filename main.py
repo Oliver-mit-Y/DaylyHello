@@ -13,9 +13,11 @@ from einträge import *
 # set up some parameters
 if not os.path.exists('./dmps'):
         os.mkdir('./dmps')
+        os.mkdir('./dmps/icons')
+
 dumplocation = "./dmps/dumpfile.json"
 x = 700
-y = 850
+y = 860
 dpbackground = 'lightgrey'
 rootbackground = 'grey'
 clockbackground = 'grey'
@@ -25,7 +27,7 @@ pressed = 0
 # create the most important objects
 root = Tk()
 mainframe = Frame(root)
-dp_frame = Canvas(mainframe)
+dp_frame = Frame(mainframe)
 kartei_frame = Frame(mainframe)
 option_frame = Frame(mainframe)
 clockframe = Frame(option_frame)
@@ -33,6 +35,8 @@ eintragsliste = Eintraege(dump_location=dumplocation)
 clocktime = Label(clockframe)
 weekd = Label(clockframe)
 karteien = []
+pictures = []
+qr_codes = []
 
 if sys.platform == 'win32':
     pypy = 'python'
@@ -54,11 +58,11 @@ def meister_proper(wid):
 def create_dp_for_dp(n, db):
     meister_proper(dp_frame)
     pressed_kartei(n)
-    dp = Frame(dp_frame, width=0,
-                    height=0,
-                    background=db
-                    )
-    dp.grid_propagate(True)
+    dp = Canvas(dp_frame, width=root.winfo_width()-25,
+                    height=dp_frame_height,
+                    background=db,
+                    highlightthickness=0)
+    dp.grid_propagate(False)
     return dp
 
 
@@ -76,56 +80,120 @@ def module_load():
                 p.wait()
     
 
+def picture_load():
+    global pictures
+    pictures = []
+    img = Im.open('./resources/image_load_error.png').convert('RGBA')
+    ix, iy = img.size
+    wish_size = 100
+    img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.ANTIALIAS)
+    imgbg = Im.new('RGBA', img.size, dpbackground.upper())
+    imgbg.paste(img, mask=img)
+    imgbg = ImageTk.PhotoImage(imgbg)
+    pictures.append({'id': 'no_id', 'img': imgbg, 'big': 0})
+
+    for tt in eintragsliste.dump:
+        for ee in tt['entrys']:
+            if ee['img'][0]:
+                if not ee['img'][2]:
+                    img = Im.open(ee['img'][1]).convert('RGBA')
+                    ix, iy = img.size
+                    wish_size = 100
+                    img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.ANTIALIAS)
+                    imgbg = Im.new('RGBA', img.size, dpbackground.upper())
+                    imgbg.paste(img, mask=img)
+                    imgbg = ImageTk.PhotoImage(imgbg)
+                else:
+                    img = Im.open(ee['img'][1]).convert('RGBA')
+                    ix, iy = img.size
+                    wish_size = 200
+                    img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.ANTIALIAS)
+                    imgbg = Im.new('RGBA', img.size, dpbackground.upper())
+                    imgbg.paste(img, mask=img)
+                    imgbg = ImageTk.PhotoImage(imgbg)
+                pictures.append({'id': ee['id'], 'img': imgbg, 'big': ee['img'][2]})
+
+
+def qr_load():
+    global qr_codes
+    qr_codes = []
+    for tt in eintragsliste.dump:
+        for ee in tt['entrys']:
+            if ee['qr']:
+                wish_size = 85
+                qr = qrcode.QRCode(border=0)
+                qr.add_data(ee["qr_data"])
+                qr.make()
+                qr = qr.make_image()
+                qx, qy = qr.size
+                qr = qr.resize((wish_size, int(qy*(wish_size/qx))))
+                qr = ImageTk.PhotoImage(qr)
+                qr_codes.append({'id': ee['id'], 'qr': qr})
+
 
 # alle "show_frame_x"-Funktionen sind fuer die einzelnen Karteien zum umschalten des Contents
 def show_frame_x(n, typ):
     eintragsliste.reloaddump()
-    dp = create_dp_for_dp(n, rootbackground)
+    parent_dp = create_dp_for_dp(n, 'lightgrey')
+    dp = Frame(parent_dp, background=rootbackground)
+    scroll = Scrollbar(dp_frame, orient=VERTICAL, command=parent_dp.yview, width=13)
+
     content = eintragsliste.dump[typ]['entrys']
 
     for en, tb in enumerate(content):
+        tf = Frame(dp, background=dpbackground)
         ydist = 2
-        txt = ent_to_str(tb)
         backslash_n = 0
-        for ch in txt:
+        for ch in tb['txt']:
             if ch == "\n":
                 backslash_n += 1
-        tb_width = 72
-        tb_height = (len(txt)-backslash_n)/tb_width+backslash_n+1.5
-
-        tf = Frame(dp, background=dpbackground)
-        tf.grid(column=0, row=en, pady=(0, 1), sticky=NE)
-        tf.rowconfigure(0, weight=1)
-        tf.rowconfigure(1, weight=1)
+        tb_width = 70
+        tb_height = (len(tb['txt'])-backslash_n)/tb_width+backslash_n+1.5
+        
+        if tb_height >= 20:
+            tb_height = 20
         
         iye, ipa, ibig = tb['img']
-        textbox = Text(tf, background=dpbackground, relief="flat")
+
+        textbox_frame = Frame(tf)
+        headline_textbox = Text(textbox_frame, background=dpbackground, relief="flat")
+        textbox = Text(textbox_frame, background=dpbackground, relief="flat")
+
         normal_bold = font.Font(family='Calibri', weight='bold', size=12)
         normal_normal = font.Font(family='Calibri', size=12)
 
+        headline_textbox.tag_configure('headline', font=normal_bold)
         textbox.tag_configure('normal', font=normal_normal)
-        textbox.tag_configure('headline', font=normal_bold)
-        textbox.insert(1.0, txt)
-        textbox.tag_add('headline', '1.0', '1.end')
-        textbox.tag_add('normal', '2.0', END)
+
+        headline_textbox.insert(1.0, tb['title'])
+        textbox.insert(1.0, tb['txt'])
+
+        headline_textbox.tag_add('headline', '1.0', '1.end')
+        textbox.tag_add('normal', '1.0', END)
+
+        headline_textbox.configure(state=DISABLED, height=1.5, width=tb_width, wrap='word')
         textbox.configure(state=DISABLED, height=tb_height, width=tb_width, wrap='word')
-        textbox.grid(column=0, row=0, sticky=NW)
+
+        textbox_frame.grid_rowconfigure(0, weight=1)
+        textbox_frame.grid_rowconfigure(1, weight=1)
+        textbox_frame.grid_columnconfigure(1, weight=1)
+
+        headline_textbox.grid(row=0, column=0, sticky=EW)
+        textbox.grid(row=1, column=0, sticky=EW)
+
+        textbox_frame.grid(row=0, column=0, sticky=NW)
         if iye or tb['qr']:
             img_frm = Frame(tf, background=dpbackground)
-            img_frm.grid_columnconfigure(0, weight=1)
-            img_frm.grid_rowconfigure(0, weight=1)
-            img_frm.grid_rowconfigure(1, weight=1)
-            img_frm.grid(column=1, row=0, sticky=NE, ipady=ydist)
-            if iye == 1:
-                if ibig == 0:
+            
+            if iye:
+                img_part = 0
+                for n, p in enumerate(pictures):
+                    if p['id'] == tb['id']:
+                        img_part = n
+                        break
+                if not ibig:
                     try:
-                        img = Im.open(ipa).convert('RGBA')
-                        ix, iy = img.size
-                        wish_size = 100
-                        img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.ANTIALIAS)
-                        imgbg = Im.new('RGBA', img.size, dpbackground.upper())
-                        imgbg.paste(img, mask=img)
-                        imgbg = ImageTk.PhotoImage(imgbg)
+                        imgbg = pictures[img_part]['img']
                         il = Label(img_frm, image=imgbg)
                         il.configure(bd=0)
                         il.photo = imgbg
@@ -134,13 +202,7 @@ def show_frame_x(n, typ):
                         print('ImageError')
                 else:
                     try:
-                        img = Im.open(ipa).convert('RGBA')
-                        ix, iy = img.size
-                        wish_size = 200
-                        img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.ANTIALIAS)
-                        imgbg = Im.new('RGBA', img.size, dpbackground.upper())
-                        imgbg.paste(img, mask=img)
-                        imgbg = ImageTk.PhotoImage(imgbg)
+                        imgbg = pictures[img_part]['img']
                         il = Label(tf, image=imgbg)
                         il.configure(bd=0)
                         il.photo = imgbg
@@ -153,28 +215,42 @@ def show_frame_x(n, typ):
                     rowow = 1
                 else:
                     rowow = 0
-                wish_size = 85
-                qr = qrcode.QRCode(border=0)
-                qr.add_data(tb["qr_data"])
-                qr.make()
-                qr = qr.make_image()
-                qx, qy = qr.size
-                qr = qr.resize((wish_size, int(qy*(wish_size/qx))))
-                qr = ImageTk.PhotoImage(qr)
+                qr_part = 0
+                for n, p in enumerate(qr_codes):
+                    if p['id'] == tb['id']:
+                        qr_part = n
+                        break
+                qr = qr_codes[qr_part]['qr']
                 ql = Label(img_frm, image=qr)
                 ql.qr = qr
                 ql.grid(column=0, row=rowow, padx=0, sticky=NE)
-            img_frm.update()
-            hfrm = img_frm.winfo_height()
-            img_frm.grid_propagate(False)
-            img_frm.configure(width=100, height=hfrm)
 
-        tf.update()
-        tfh = tf.winfo_height()
-        tf.grid_propagate(False)
-        tf.configure(width=root.winfo_width()-15, height=tfh)
+            img_frm.grid_propagate(True)
+            img_frm.grid_columnconfigure(0, weight=1)
+            img_frm.grid_rowconfigure(0, weight=1)
+            img_frm.grid_rowconfigure(1, weight=1)
+            img_frm.grid(column=1, row=0, sticky=NSEW, ipady=ydist)
+        root.update()
+        tf.grid_rowconfigure(0, weight=1)
+        tf.grid_rowconfigure(1, weight=1)
+        tf.grid_columnconfigure(0, weight=1)
+        tf.grid_columnconfigure(1, weight=1)
 
-    dp.grid(column=0, row=0, padx=(5, 0), pady=(5, 5))
+        tf.grid(column=0, row=en, pady=(0, 1), sticky=NSEW)
+
+    dp_frame.grid_columnconfigure(0, weight=1)
+    dp_frame.grid_columnconfigure(1, weight=1)
+    dp_frame.grid_rowconfigure(0, weight=1)
+
+    dp.grid_columnconfigure(0, weight=1)
+
+    parent_dp.create_window(0, 0, anchor=NW, window=dp)
+    parent_dp.update_idletasks()
+
+    parent_dp.configure(scrollregion=parent_dp.bbox('all'), yscrollcommand=scroll.set)
+
+    parent_dp.grid(column=0, row=0, padx=(5, 0), pady=(5, 5))
+    scroll.grid(row=0, column=1, sticky=NS)    
 
 
 # funktion für den close button
@@ -191,11 +267,11 @@ def updateall(it):
 def pressed_kartei(n):
     global pressed
     for btn in karteien:
-        if btn['name'] == n:
-            btn['goto'].configure(background=pressed_btn_color)
+        if btn['typ'] == n:
+            btn['goto'].configure(background=pressed_btn_color, image=btn['p_image'])
             pressed = btn['typ']
         else:
-            btn['goto'].configure(background=buttonbackground)
+            btn['goto'].configure(background=buttonbackground, image=btn['image'])
         
         root.update()
 
@@ -222,10 +298,13 @@ def update_weekd():
 
 def reload():
     module_load()
+    picture_load()
+    qr_load()
+
     na = ""
     for k in karteien:
         if k['typ'] == pressed:
-            na = k['name']
+            na = k['typ']
 
     show_frame_x(na, pressed)
 
@@ -268,24 +347,28 @@ if __name__ == '__main__':
     root.update()
     
     module_load()
+    picture_load()
+    qr_load()
     
     ladelabel.place_forget()
     root.configure(background=rootbackground)
 
 
     # mainframe grid configure
-    mainframe.columnconfigure(0, weight=1)
-    mainframe.columnconfigure(1, weight=1)
+    mainframe.grid_columnconfigure(0, weight=1)
+    mainframe.grid_rowconfigure(0, weight=1)
+    mainframe.grid_rowconfigure(1, weight=1)
+    mainframe.grid_rowconfigure(2, weight=1)
 
     # Grid important Frames
-    kartei_frame.grid(column=0, row=0, sticky=N)
-    dp_frame.grid(column=0, row=1, sticky=W)
-    option_frame.grid(column=0, row=2, sticky=S, pady=0)
+    kartei_frame.grid(column=0, row=0, sticky=EW)
+    dp_frame.grid(column=0, row=1, sticky=NSEW, pady=0, ipady=0)
+    option_frame.grid(column=0, row=2, sticky=EW, pady=0)
     mainframe.grid(column=0, row=0, sticky=NSEW)
     # set options for frames
     mainframe.configure(background=rootbackground)
     kartei_frame.configure(background=rootbackground)
-    dp_frame.configure(background=dpbackground, highlightthickness=0)
+    dp_frame.configure(background=dpbackground)
     option_frame.configure(background=rootbackground)
     root.update()
 
@@ -306,8 +389,8 @@ if __name__ == '__main__':
     weekd.grid(column=0, row=0, padx=20, sticky=W)
     clocktime.grid(column=1, row=0, padx=(100, 0), ipady=0, sticky=NSEW)
 
-    add_btn.grid(column=0, row=0, ipady=15, pady=(1, 0), sticky=S)
-    close_btn.grid(column=2, row=0, ipady=15, pady=(1, 0), sticky=S)
+    add_btn.grid(column=0, row=0, ipady=15, pady=(1, 0), sticky=EW)
+    close_btn.grid(column=2, row=0, ipady=15, pady=(1, 0), sticky=EW)
 
     update_time()
     update_weekd()
@@ -333,31 +416,69 @@ if __name__ == '__main__':
     root.update()
 
     # Karteien
-    dp_frame_height = (root.winfo_height() - (2 * option_frame.winfo_height()))
-    dp_frame.configure(height=dp_frame_height, width=x)
+    
     dp_frame.grid_propagate(False)
     for n, cards in enumerate(eintragsliste.dump):
         card = {'name': cards['name'], 
                 'goto': Button(kartei_frame,
-                               command=lambda c=cards['name'], nn=n: show_frame_x(c, nn)),
-                'typ': n}
+                               command=lambda c=n, nn=n: show_frame_x(c, nn)),
+                'typ': n,
+                'icn': cards['icon'],
+                'image':None,
+                'p_image':None}
         karteien.append(card)
 
 
     # Configuriere Buttons für Karteien
     for c, k in enumerate(karteien):
-        k['goto'].configure(text=k['name'], background=buttonbackground, borderwidth=1, relief='flat')
-        k['goto'].grid(column=c, row=0, ipady=15, padx=1)
-    root.update()
+        if k['icn'][0]:
+            try:
+                img = Im.open(k['icn'][1]).convert('RGBA')
+                ix, iy = img.size
+                wish_size = 30
+                img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.ANTIALIAS)
+                imgbg = Im.new('RGBA', img.size, buttonbackground.upper())
+                imgbg.paste(img, mask=img)
+                imgbg = ImageTk.PhotoImage(imgbg)
 
-    for c, k in enumerate(karteien):
-        k['goto'].grid(ipadx=(root.winfo_width() - kartei_frame.winfo_width()) / len(karteien * 2))
+                k['goto'].configure(image=imgbg, compound=LEFT)
+                k['goto'].image = imgbg
+                k['image'] = imgbg
+
+                img = Im.open(k['icn'][1]).convert('RGBA')
+                ix, iy = img.size
+                wish_size = 30
+                img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.ANTIALIAS)
+                pressed_img = Im.new('RGBA', img.size, pressed_btn_color.upper())
+                pressed_img.paste(img, mask=img)
+                pressed_img = ImageTk.PhotoImage(pressed_img)
+                k['goto'].i_pressed = pressed_img
+                k['p_image'] = pressed_img
+
+            except Exception:
+                print('ImageError')
+                img = Im.open('./resources/image_load_error.png').convert('RGBA')
+                ix, iy = img.size
+                wish_size = 30
+                img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.ANTIALIAS)
+                imgbg = Im.new('RGBA', img.size, buttonbackground.upper())
+                imgbg.paste(img, mask=img)
+                imgbg = ImageTk.PhotoImage(imgbg)
+                k['goto'].configure(image=imgbg, compound=LEFT)
+                k['goto'].image = imgbg
+
+        k['goto'].configure(text=k['name'], background=buttonbackground, borderwidth=1, relief='flat')
+        kartei_frame.grid_columnconfigure(c, weight=1)
+        k['goto'].grid(column=c, row=0, ipady=15, padx=1, sticky=NSEW)
 
     # add reload button
     reload_btn = Button(option_frame, text='r', width=1, height=1, command=lambda:reload(), background=buttonbackground)
     reload_btn.grid(row=0, column=1, sticky=SE)
+    root.update()
+    dp_frame_height = (root.winfo_height() - kartei_frame.winfo_height() - option_frame.winfo_height())
+    dp_frame.configure(height=dp_frame_height, width=x)
 
-    show_frame_x(karteien[0]['name'], 0)
+    show_frame_x(karteien[0]['typ'], 0)
     
     kartei_length_check(karteien)
 

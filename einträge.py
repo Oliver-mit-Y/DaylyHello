@@ -46,9 +46,9 @@ class Eintraege:
             # "entrys" is a list with the entrys of the card []
 
             # Basic Entry Structure
-            # {"title": "str", "txt": "text for entry", "api": True/False,
+            # {"title": "str", "txt": "text for entry", "api": 0/1,
             # "api_conf":["what to access"]["in the api data"], "api_lnk": "api options",
-            # "img": [True/False, Image(), True/False], "qr": "data for qr code (code will be made from it)"}
+            # "img": [0/1, Image(), 0/1], "qr": 0/1 ,"qr_data": "data for qr code (code will be made from it)"}
             dump_dummy = [{"name": "Kartei 1", "entrys": 
                                                 [{"title": "title", 
                                                   "txt": "placeholder", 
@@ -85,7 +85,8 @@ class Eintraege:
         self.dump[typ]['entrys'].append(ent)
 
     def new_card(self, name='neue_kartei'):
-        self.dump.append({'name': name, 'entrys': []})
+        card_id = self.generate_id()
+        self.dump.append({'name': name, 'icon': [0, 'noicon'], 'entrys': [], 'id': card_id})
 
     def savedump(self):
         with open(self.dumpsterpath, 'w') as file:
@@ -143,23 +144,12 @@ class Eintraege:
                     tt = n
                     ee = m
                     break
-        print(str(tt) + '    ' + str(ee))
-        print(len(self.dump[tt][s]))
 
         if ee != len(self.dump[tt][s])-1:
             self.dump[tt][s] = self.dump[tt][s][::-1]
             ee = len(self.dump[tt][s])-ee-1
-
-
             new_order = []
-
-            for x in self.dump[tt][s]:
-                print(x['title'])
-
             old_without_changed = remove_slice(self.dump[tt][s], ee)
-            print('')
-            for x in old_without_changed:
-                print(x['title'])
 
             for n, x in enumerate(self.dump[tt][s]):
                 if n<(ee-1):
@@ -172,10 +162,6 @@ class Eintraege:
             new_order = new_order[::-1]
 
             self.dump[tt][s] = new_order
-            print('')
-            for x in new_order:
-                print(x['title'])
-
 
     def move_ent_up(self, id):
         tt = 0
@@ -187,18 +173,10 @@ class Eintraege:
                     tt = n
                     ee = m
                     break
-        print(str(tt) + '    ' + str(ee))
-
+       
         if ee != 0:
             new_order = []
-
-            for x in self.dump[tt][s]:
-                print(x['title'])
-
             old_without_changed = remove_slice(self.dump[tt][s], ee)
-            print('')
-            for x in old_without_changed:
-                print(x['title'])
 
             for n, x in enumerate(self.dump[tt][s]):
                 if n<(ee-1):
@@ -208,9 +186,6 @@ class Eintraege:
                 if n>(ee-1):
                     new_order.append(old_without_changed[(n-1)])
             self.dump[tt][s] = new_order
-            print('')
-            for x in new_order:
-                print(x['title'])
 
 
     def printdump(self):

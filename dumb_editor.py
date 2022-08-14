@@ -1,10 +1,12 @@
 import sys
 import shutil
-from tkinter.tix import COLUMN
+import os
 from einträge import *
 from tkinter import *
 from tkinter import messagebox
 from tkinter.filedialog import askopenfilename
+import PIL.Image as Im
+from PIL import ImageTk
 
 x = 700
 y = 500
@@ -16,16 +18,31 @@ root.title('Eintrags Editor')
 mainframe = Frame(root)
 selection_frame = Frame(mainframe)
 type_selector_frame = Frame(mainframe)
-back = str('Notes')
+back = 0
 backtyp = 0
 ed_ent = {'typ': Eintraege.daylytea, 'n': 0}
 karteien = []
+resources = []
+
+pressed_btn_color = '#cccccc'
 
 
 def restart_editor():
     sys.stdout.flush()
     os.execl(sys.executable, 'python', __file__, *sys.argv[1:])
 
+
+def load_resources():
+    r_dir = os.listdir('./resources')
+    for r in r_dir:
+        img = Im.open(f'./resources/{r}').convert('RGBA')
+        ix, iy = img.size
+        wish_size = 20
+        img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.ANTIALIAS)
+        imgbg = Im.new('RGBA', img.size, 'lightgrey'.upper())
+        imgbg.paste(img, mask=img)
+        imgbg = ImageTk.PhotoImage(imgbg)
+        resources.append(imgbg)
 
 def meister_proper(wid):
     wid_cont = wid.winfo_children()
@@ -58,57 +75,80 @@ def create_entry(typ, m, btn_list, height):
 
 def show_frame_x(m=None, btn_list=None, height=None, typ=None, dp=None):
     if not dp:
-        dp = create_dp_for_dp([m, typ], btn_list, 'lightgrey')
-
         if typ is not None:
+            scroll_frame = create_dp_for_dp(typ, btn_list, 'lightgrey')
+            dp_canvas = Canvas(scroll_frame, background='lightgrey', highlightthickness=0)
+            scroll = Scrollbar(scroll_frame, orient=VERTICAL, command=dp_canvas.yview, highlightthickness=0)
+            dp = Frame(dp_canvas)
+            part_select_option_frame = Frame(selection_frame, background='lightgrey')
+
+
             for n, d in enumerate(eintragliste.dump[typ]['entrys']):
                 
                 part_frm = Frame(dp, background='grey')
                 part = [d['id'], Button(part_frm, text=d['title'], height=3, width=50, background='lightgrey')]
                 up_dwn_frm = Frame(part_frm, background='grey')
-                up_btn = Button(up_dwn_frm, text='up', width=4, background='lightgrey', command=lambda p=part[0]: entry_up_btn_fnc(p))
-                up_btn.grid(row=0, column=0)
-                dwn_btn = Button(up_dwn_frm, text='dwn', width=4, background='lightgrey', command=lambda p=part[0]: entry_down_btn_fnc(p))
-                dwn_btn.grid(row=1, column=0)
+                up_dwn_frm.grid_rowconfigure(0, weight=1)
+                up_dwn_frm.grid_rowconfigure(1, weight=1)
+                up_btn = Button(up_dwn_frm, image=resources[0], width=32, background='lightgrey', command=lambda p=part[0]: entry_up_btn_fnc(p))
+                up_btn.grid(row=0, column=0, sticky=N)
+                dwn_btn = Button(up_dwn_frm, image=resources[1], width=32, background='lightgrey', command=lambda p=part[0]: entry_down_btn_fnc(p))
+                dwn_btn.grid(row=1, column=0, sticky=S)
                 part[1].configure(command=lambda p=part[0]:
                                   show_frame_x(dp=editor_frame(eintragliste.dmp_by_id(p))))
 
                 part[1].grid(row=0, column=0, padx=2, pady=2)
-                up_dwn_frm.grid(row=0, column=1)
+                up_dwn_frm.grid(row=0, column=1, sticky=NS, pady=2)
                 part_frm.grid(row=n, column=0, sticky=W)
 
-            part_select_option_frame = Frame(selection_frame, background='lightgrey')
 
             plus_btn = Button(part_select_option_frame, height=1, background='lightgrey', font=('Calibri', 20), width=3, text="+", command=lambda: create_entry(typ, m, btn_list, height))
             plus_btn.grid(row=0, column=0, padx=5, pady=5, sticky=NE)
 
             plus_minus_card_frame = Frame(part_select_option_frame, background='grey')
 
-            card_up_btn = Button(plus_minus_card_frame, text='up', background='lightgrey', height=1, width=7, command=lambda:card_up_btn_fnc(typ))
-            card_dwn_btn = Button(plus_minus_card_frame, text='dwn', background='lightgrey', height=1, width=7, command=lambda:card_down_btn_fnc(typ))
-            minus_card_btn = Button(plus_minus_card_frame, text='-', background='lightgrey', height=1, width=7, command=lambda: minus_card_btn_fnc(typ=typ))
-            plus_card_btn = Button(plus_minus_card_frame, text='+', background='lightgrey', height=1, width=7, command=lambda: plus_card_btn_fnc())
-            edit_card_btn = Button(plus_minus_card_frame, text='edit', background='lightgrey', height=1, width=7, command=lambda: show_frame_x(dp=edit_card_btn_fnc(typ=typ)))
-            card_up_btn.grid(row=0, column=0, padx=8, pady=2)
-            card_dwn_btn.grid(row=1, column=0, padx=8, pady=2)
-            minus_card_btn.grid(row=2, column=0, padx=8, pady=2)
-            plus_card_btn.grid(row=3, column=0, padx=8, pady=2)
-            edit_card_btn.grid(row=4, column=0, padx=8, pady=2)
-            selection_frame.grid_rowconfigure(1, weight=1)
-            selection_frame.grid_columnconfigure(1, weight=1)
+            card_up_btn = Button(plus_minus_card_frame, image=resources[0], background='lightgrey', height=20, command=lambda:card_up_btn_fnc(typ))
+            card_dwn_btn = Button(plus_minus_card_frame, image=resources[1], background='lightgrey', height=20, command=lambda:card_down_btn_fnc(typ))
+            minus_card_btn = Button(plus_minus_card_frame, text='-', background='lightgrey', height=1, command=lambda: minus_card_btn_fnc(typ=typ))
+            plus_card_btn = Button(plus_minus_card_frame, text='+', background='lightgrey', height=1, command=lambda: plus_card_btn_fnc())
+            edit_card_btn = Button(plus_minus_card_frame, text='edit', background='lightgrey', height=1, command=lambda: show_frame_x(dp=edit_card_btn_fnc(typ=typ)))
+            card_up_btn.grid(row=0, column=0, padx=8, pady=2, sticky=EW)
+            card_dwn_btn.grid(row=1, column=0, padx=8, pady=2, sticky=EW)
+            minus_card_btn.grid(row=2, column=0, padx=8, pady=2, sticky=EW)
+            plus_card_btn.grid(row=3, column=0, padx=8, pady=2, sticky=EW)
+            edit_card_btn.grid(row=4, column=0, padx=8, pady=2, sticky=EW)
             plus_minus_card_frame.grid(row=1, column=0, sticky=SE, ipady=2)
-            part_select_option_frame.grid(row=0, column=1, sticky=NE)
-            root.update()
-            temp_width = part_select_option_frame.winfo_width()
+
             part_select_option_frame.grid_propagate(False)
-            part_select_option_frame.configure(width=temp_width, height=root.winfo_height())
+            part_select_option_frame.configure(width=70, height=root.winfo_height())
             part_select_option_frame.grid_rowconfigure(0, weight=1)
             part_select_option_frame.grid_rowconfigure(1, weight=1)
+            part_select_option_frame.grid_columnconfigure(0, weight=1)
+
+            selection_frame.grid_rowconfigure(0, weight=1)
+            selection_frame.grid_columnconfigure(0, weight=1)
+            selection_frame.grid_columnconfigure(1, weight=1)
+
+            scroll_frame.grid_columnconfigure(0, weight=1)
+            scroll_frame.grid_columnconfigure(1, weight=1)
+            scroll_frame.grid_rowconfigure(0, weight=1)
+
+            dp_canvas.create_window(0, 0, anchor=NW, window=dp)
+            dp_canvas.update_idletasks()
+            dp_canvas.configure(scrollregion=dp_canvas.bbox('all'), yscrollcommand=scroll.set, width=dp.winfo_width())
+
+            scroll_frame.grid(row=0, column=0, padx=(0, 0), pady=(5, 5), sticky=NS)
+            dp_canvas.grid(row=0, column=0, sticky=NS)
+            scroll.grid(row=0, column=1, sticky = NS, padx=3)
+            part_select_option_frame.grid(row=0, column=1, sticky=NE)
+            root.update()
+
+            
             
         if typ is None:
             print("type is none :(")
-
-    dp.grid(column=0, row=0, padx=(5, 0), pady=(5, 5), sticky=NW)
+    else:
+        dp.grid(column=0, row=0, padx=(5, 0), pady=(5, 5), sticky=NW)
 
 
 def file_btn_fnc(ent_wdg):
@@ -138,27 +178,71 @@ def plus_card_btn_fnc():
     restart_editor()
 
 def edit_card_btn_fnc(typ):
+    meister_proper(selection_frame)
     dp = Frame(selection_frame, width=selection_frame.winfo_width()-10, height=root.winfo_height(),
-                    background='grey')
+                    background='lightgray')
     dp.grid_propagate(False)
-    name_lbl = Label(dp, text='new name of card', background='lightgrey', relief='flat')
-    name_txt = Entry(dp)
+
+    name_parent_frm = Frame(dp, background='grey')
+    name_lbl = Label(name_parent_frm, text='new name of card', background='lightgrey', relief='flat')
+    name_txt = Entry(name_parent_frm, background='lightgrey')
     name_txt.insert(0, eintragliste.dump[typ]['name'])
-    name_lbl.grid(row=0, column=0, pady=5, padx=5, sticky=W)
-    name_txt.grid(row=1, column=0, pady=5, padx=5)
+    name_lbl.grid(row=0, column=0, pady=5, padx=5, sticky=NW)
+    name_txt.grid(row=1, column=0, pady=5, padx=5, sticky=NW)
 
-    sv_btn = Button(dp, background='darkgrey', text='save', font=('calibri', 12),
-                    command=lambda:save_card_fnc(typ, name_txt))
-    bck_btn = Button(dp, background='darkgrey', text='back', font=('calibri', 12),
+    icon_parent_frm = Frame(dp, background='grey')
+    icon_lbl = Label(icon_parent_frm)
+    icon_vl = IntVar()
+    icon_yes_no = Checkbutton(icon_parent_frm)
+    icon_path_frm = Frame(icon_parent_frm)
+    icon_path_ent = Entry(icon_path_frm)
+    icon_path_btn = Button(icon_path_frm)
+
+    icon_lbl.configure(text='Icon für Kartei', background='lightgrey')
+    icon_yes_no.configure(variable=icon_vl, background='grey')
+    icon_path_frm.configure(background='grey')
+    icon_path_ent.configure(background='lightgrey')
+    icon_path_btn.configure(text='F', height=1, width=1, command= lambda: file_btn_fnc(icon_path_ent), relief='flat', background='lightgrey')
+
+    icon_vl.set(eintragliste.dump[typ]['icon'][0])
+    icon_path_ent.insert(0, eintragliste.dump[typ]['icon'][1])
+
+    icon_path_frm.grid_columnconfigure(0, weight=1)
+    icon_path_frm.grid_columnconfigure(1, weight=1)
+    icon_path_frm.grid_rowconfigure(0, weight=1)
+
+    icon_path_ent.grid(row=0, column=0, sticky=NSEW)
+    icon_path_btn.grid(row=0, column=1)
+
+    icon_lbl.grid(row=0, column=0, pady=5, padx=5, sticky=NW)
+    icon_yes_no.grid(row=1, column=0, pady=5, padx=5, sticky=NW)
+    icon_path_frm.grid(row=1, column=1, pady=5, padx=5, sticky=NW)
+
+    btn_parent_frm = Frame(dp, background='black')
+    sv_btn = Button(btn_parent_frm, background='darkgrey', text='save', font=('calibri', 12),
+                    command=lambda:save_card_fnc(typ, name_txt, icon_vl.get(), icon_path_ent))
+    bck_btn = Button(btn_parent_frm, background='darkgrey', text='back', font=('calibri', 12),
                     command=lambda:bck_btn_fnc())
-
-    sv_btn.grid(row=2, column=0)
-    bck_btn.grid(row=2, column=1)
     
+    sv_btn.grid(row=0, column=0, pady=5, padx=5, sticky=EW)
+    bck_btn.grid(row=0, column=1, pady=5, padx=5, sticky=EW)
+    
+    name_parent_frm.grid(row=0, column=0, sticky=EW, pady=2, padx=5)
+    icon_parent_frm.grid(row=1, column=0, sticky=EW, pady=2, padx=5)
+    btn_parent_frm.grid(row=2, column=0, sticky=EW, pady=2, padx=5)
+
+
+    clms, rws = btn_parent_frm.grid_size()
+    for c in range(0, clms):
+        btn_parent_frm.grid_columnconfigure(c, weight=1)
+    
+    dp.grid_columnconfigure(0, weight=1)
+
     return dp
 
 # frame to edit one specific Entry
 def editor_frame(d):
+    meister_proper(selection_frame)
     dp = Frame(selection_frame, width=selection_frame.winfo_width()-10, height=root.winfo_height(),
                     background='lightgrey')
     dp.grid_propagate(False)
@@ -323,13 +407,13 @@ def pressed_kartei(m, btn_list):
     global back
     global backtyp
     for btn in btn_list:
-        if btn['name'] == m[0]:
-            btn['goto'].configure(background='lightgray')
+        if btn['typ'] == m:
+            btn['goto'].configure(background=pressed_btn_color)
         else:
             btn['goto'].configure(background='grey')
         root.update()
-    back = m[0]
-    backtyp = m[1]
+    back = m
+    backtyp = m
 
 
 def apply_btn_fnc(optlist):
@@ -411,21 +495,43 @@ def entry_down_btn_fnc(id):
     eintragliste.savedump()
 
 
-def save_card_fnc(typ, name):
+def save_card_fnc(typ, name, icn_state, icn_path):
     titel = str_cleanup(name.get())
+    icn_path = icn_path.get()
     eintragliste.dump[typ]['name'] = titel
+    save_icon_name = eintragliste.dump[typ]['id'].replace('#', '')
+
+    if icn_state:
+        try:
+            filend = icn_path.split('.')
+            filend = filend[-1]
+            img_pth = f'dmps/icons/{save_icon_name}.{filend}'
+            if icn_path != img_pth:
+                shutil.copyfile(icn_path, img_pth)
+
+        except Exception:
+            messagebox.showerror('Image ERROR', 'Bild konnte entweder nicht gefunden werden oder Zugriff wurde verweigert')
+            img_pth = f'./dmps/icons/{save_icon_name}.png'
+    else:
+        img_pth = f'./dmps/icons/{save_icon_name}.png'
+
+
+    icn = [icn_state, img_pth]
+    eintragliste.dump[typ]['icon'] = icn
+
     eintragliste.savedump()
     restart_editor()
 
 
 def kartei_load():
+    global karteien
     karteien = []
     for n, cards in enumerate(eintragliste.dump):
         card = {'name': cards['name'], 
                 'goto': Button(type_selector_frame,
-                               command=lambda c=cards['name'], nn=n: show_frame_x(c, karteien, selection_frame.winfo_height(), nn))}
+                               command=lambda c=cards['name'], nn=n: show_frame_x(c, karteien, selection_frame.winfo_height(), nn)),
+                'typ': n}
         karteien.append(card)
-    return karteien
 
 
 if __name__ == '__main__':
@@ -450,14 +556,20 @@ if __name__ == '__main__':
     type_selector_frame.grid_propagate(True)
     root.update()
 
-    karteien = kartei_load()
+    kartei_load()
+    load_resources()
+
 
     for c, k in enumerate(karteien):
         k['goto'].configure(text=k['name'], background='grey', borderwidth=1, relief='flat')
         k['goto'].grid(column=0, row=c, pady=1)
+
     root.update()
+
     irange = ((root.winfo_height() - type_selector_frame.winfo_height()) / (len(karteien)*2))
     for c, k in enumerate(karteien):
         k['goto'].grid(ipady=irange, ipadx=(125-k['goto'].winfo_width())/2)
+
+    show_frame_x(None, karteien, selection_frame.winfo_height(), 0)
 
     mainloop()
