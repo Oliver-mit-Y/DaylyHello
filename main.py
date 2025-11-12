@@ -17,7 +17,7 @@ if not os.path.exists('./dmps'):
 
 dumplocation = "./dmps/dumpfile.json"
 x = 700
-y = 860
+y = 700#860
 dpbackground = 'lightgrey'
 rootbackground = 'grey'
 clockbackground = 'grey'
@@ -86,7 +86,7 @@ def picture_load():
     img = Im.open('./resources/image_load_error.png').convert('RGBA')
     ix, iy = img.size
     wish_size = 100
-    img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.ANTIALIAS)
+    img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.LANCZOS)
     imgbg = Im.new('RGBA', img.size, dpbackground.upper())
     imgbg.paste(img, mask=img)
     imgbg = ImageTk.PhotoImage(imgbg)
@@ -99,7 +99,7 @@ def picture_load():
                     img = Im.open(ee['img'][1]).convert('RGBA')
                     ix, iy = img.size
                     wish_size = 100
-                    img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.ANTIALIAS)
+                    img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.LANCZOS)
                     imgbg = Im.new('RGBA', img.size, dpbackground.upper())
                     imgbg.paste(img, mask=img)
                     imgbg = ImageTk.PhotoImage(imgbg)
@@ -107,7 +107,7 @@ def picture_load():
                     img = Im.open(ee['img'][1]).convert('RGBA')
                     ix, iy = img.size
                     wish_size = 200
-                    img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.ANTIALIAS)
+                    img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.LANCZOS)
                     imgbg = Im.new('RGBA', img.size, dpbackground.upper())
                     imgbg.paste(img, mask=img)
                     imgbg = ImageTk.PhotoImage(imgbg)
@@ -436,7 +436,7 @@ if __name__ == '__main__':
                 img = Im.open(k['icn'][1]).convert('RGBA')
                 ix, iy = img.size
                 wish_size = 30
-                img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.ANTIALIAS)
+                img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.LANCZOS)
                 imgbg = Im.new('RGBA', img.size, buttonbackground.upper())
                 imgbg.paste(img, mask=img)
                 imgbg = ImageTk.PhotoImage(imgbg)
@@ -448,7 +448,7 @@ if __name__ == '__main__':
                 img = Im.open(k['icn'][1]).convert('RGBA')
                 ix, iy = img.size
                 wish_size = 30
-                img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.ANTIALIAS)
+                img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.LANCZOS)
                 pressed_img = Im.new('RGBA', img.size, pressed_btn_color.upper())
                 pressed_img.paste(img, mask=img)
                 pressed_img = ImageTk.PhotoImage(pressed_img)
@@ -460,7 +460,7 @@ if __name__ == '__main__':
                 img = Im.open('./resources/image_load_error.png').convert('RGBA')
                 ix, iy = img.size
                 wish_size = 30
-                img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.ANTIALIAS)
+                img = img.resize((int(ix*(wish_size/iy)), wish_size), Im.LANCZOS)
                 imgbg = Im.new('RGBA', img.size, buttonbackground.upper())
                 imgbg.paste(img, mask=img)
                 imgbg = ImageTk.PhotoImage(imgbg)

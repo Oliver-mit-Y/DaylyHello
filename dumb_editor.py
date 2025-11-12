@@ -38,7 +38,7 @@ def load_resources():
         img = Im.open(f'./resources/{r}').convert('RGBA')
         ix, iy = img.size
         wish_size = 20
-        img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.ANTIALIAS)
+        img = img.resize((wish_size, int(iy*(wish_size/ix))), Im.LANCZOS)
         imgbg = Im.new('RGBA', img.size, 'lightgrey'.upper())
         imgbg.paste(img, mask=img)
         imgbg = ImageTk.PhotoImage(imgbg)
